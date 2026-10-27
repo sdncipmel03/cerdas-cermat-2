@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cerdas Cermat Interaktif</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/js/all.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; background-color: #f0fdfa; }
+        .modal-enter { animation: fadeIn 0.3s ease-out forwards; }
+        .pulse-fast { animation: pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; color: #ef4444; transform: scale(1); }
+            50% { opacity: 0.7; color: #b91c1c; transform: scale(1.05); }
+        }
+        .team-A { border-color: #111827; } /* Hitam */
+        .team-B { border-color: #ef4444; } /* Merah */
+        .team-C { border-color: #16a34a; } /* Hijau */
+        .team-Rebutan { border-color: #3b82f6; } /* Biru */
+        
+        .bg-team-A { background-color: #111827; color: white; }
+        .bg-team-B { background-color: #ef4444; color: white; }
+        .bg-team-C { background-color: #16a34a; color: white; }
+        .bg-team-Rebutan { background-color: #3b82f6; color: white; }
+    </style>
+</head>
+<body class="min-h-screen text-slate-800 flex flex-col">
+
+    <!-- START SCREEN (To initialize Audio Context) -->
+    <div id="start-screen" class="fixed inset-0 bg-teal-900 z-50 flex flex-col items-center justify-center text-white">
+        <i class="fas fa-graduation-cap text-6xl mb-6 text-yellow-400"></i>
+        <h1 class="text-4xl md:text-6xl font-bold mb-4 text-center px-4">Lomba Cerdas Cermat Babak Final Akhir</h1>
+        <p class="text-xl mb-8 text-teal-200">(Tingkat SD)</p>
+        <button onclick="initGame()" class="bg-yellow-400 hover:bg-yellow-500 text-teal-900 font-bold py-4 px-8 rounded-full text-2xl shadow-xl transition transform hover:scale-105">
+            Mulai Acara
+        </button>
+    </div>
+
+    <!-- CUSTOM ALERT MODAL -->
+    <div id="alert-modal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm">
+        <div class="bg-white rounded-2xl shadow-2xl max-w-sm w-full p-6 text-center transform scale-95 transition-transform duration-300" id="alert-box">
+            <div id="alert-icon" class="text-5xl mb-4 text-red-500"><i class="fas fa-exclamation-circle"></i></div>
+            <h3 id="alert-title" class="text-2xl font-bold mb-2">Peringatan</h3>
+            <p id="alert-message" class="text-gray-600 mb-6">Pesan peringatan disini.</p>
+            <button onclick="closeAlert()" class="bg-slate-800 text-white px-6 py-2 rounded-lg font-semibold hover:bg-slate-700 w-full">Tutup</button>
+        </div>
+    </div>
+
+    <!-- MAIN APP -->
+    <div class="flex-1 flex flex-col max-w-7xl mx-auto w-full p-2 md:p-4 opacity-0 transition-opacity duration-500" id="main-app">
+        
+        <!-- HEADER & NAVIGATION -->
+        <header class="bg-white rounded-2xl shadow-md p-4 mb-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <div class="flex items-center gap-3">
+                <i class="fas fa-trophy text-yellow-500 text-3xl"></i>
+                <div>
+                    <h2 class="text-xl font-bold uppercase tracking-wide">Cerdas Cermat</h2>
+                    <p class="text-sm text-slate-500 font-medium">Panel Operator</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap justify-center gap-2">
+                <select id="grade-select" onchange="changeGrade(this.value)" class="hidden bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="0">Babak Final Akhir</option>
+                </select>
+                <select id="round-select" onchange="changeRound(this.value)" class="bg-slate-100 border border-slate-300 rounded-lg px-4 py-2 font-semibold text-slate-700 focus:outline-none focus:ring-2 focus:ring-teal-500">
+                    <option value="0">Babak 1 (Penyisihan)</option>
+                    <option value="1">Babak 2 (Semifinal)</option>
+                    <option value="2">Babak 3 (Rebutan)</option>
+                </select>
+            </div>
+        </header>
+
+        <!-- SCOREBOARD -->
+        <div class="grid grid-cols-3 gap-4 mb-6" id="scoreboard">
+            <!-- Regu A -->
+            <div class="bg-white rounded-2xl shadow-md overflow-hidden border-b-4 border-gray-900">
+                <div class="bg-gray-900 text-white text-center py-2 font-bold uppercase tracking-wider text-sm">Regu A (Hitam)</div>
+                <div class="p-4 text-center">
+                    <div id="score-A" class="text-4xl md:text-5xl font-black text-slate-800">0</div>
+                    <div class="mt-4 flex justify-center gap-2">
+                        <button onclick="updateScore('A', 100)" class="bg-green-100 text-green-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-green-200">+100</button>
+                        <button onclick="updateScore('A', -50)" class="bg-red-100 text-red-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-red-200">-50</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Regu B -->
+            <div class="bg-white rounded-2xl shadow-md overflow-hidden border-b-4 border-red-500">
+                <div class="bg-red-500 text-white text-center py-2 font-bold uppercase tracking-wider text-sm">Regu B (Merah)</div>
+                <div class="p-4 text-center">
+                    <div id="score-B" class="text-4xl md:text-5xl font-black text-slate-800">0</div>
+                    <div class="mt-4 flex justify-center gap-2">
+                        <button onclick="updateScore('B', 100)" class="bg-green-100 text-green-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-green-200">+100</button>
+                        <button onclick="updateScore('B', -50)" class="bg-red-100 text-red-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-red-200">-50</button>
+                    </div>
+                </div>
+            </div>
+            <!-- Regu C -->
+            <div id="panel-regu-c" class="bg-white rounded-2xl shadow-md overflow-hidden border-b-4 border-green-600">
+                <div class="bg-green-600 text-white text-center py-2 font-bold uppercase tracking-wider text-sm">Regu C (Hijau)</div>
+                <div class="p-4 text-center">
+                    <div id="score-C" class="text-4xl md:text-5xl font-black text-slate-800">0</div>
+                    <div class="mt-4 flex justify-center gap-2">
+                        <button onclick="updateScore('C', 100)" class="bg-green-100 text-green-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-green-200">+100</button>
+                        <button onclick="updateScore('C', -50)" class="bg-red-100 text-red-700 px-3 py-1 rounded-md text-sm font-bold hover:bg-red-200">-50</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- MAIN QUESTION AREA -->
+        <div class="flex-1 bg-white rounded-3xl shadow-xl p-6 md:p-10 border-t-8 flex flex-col" id="question-card">
+            
+            <!-- Context Header (Team Turn & Timer) -->
+            <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-6 border-b pb-6 border-slate-100">
+                <div id="turn-badge" class="px-6 py-2 rounded-full font-bold text-lg shadow-sm">
+                    Giliran: Regu A
+                </div>
+                
+                <div class="flex items-center gap-4">
+                    <div class="text-center">
+                        <div id="timer-display" class="text-6xl font-black font-mono text-slate-800 w-24">10</div>
+                        <div class="text-xs text-slate-400 font-bold uppercase mt-1">Detik</div>
+                    </div>
+                    <button id="btn-timer" onclick="toggleTimer()" class="bg-teal-500 hover:bg-teal-600 text-white h-14 w-14 rounded-full flex items-center justify-center shadow-lg transition-transform hover:scale-105 focus:outline-none">
+                        <i class="fas fa-play text-xl" id="icon-timer"></i>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Question Content -->
+            <div class="flex-1">
+                <div class="flex items-center gap-3 mb-4">
+                    <span class="bg-slate-100 text-slate-500 px-3 py-1 rounded-lg text-sm font-bold font-mono" id="q-number">Soal 1/10</span>
+                </div>
+                <h3 id="q-text" class="text-2xl md:text-3xl font-semibold text-slate-800 leading-snug whitespace-pre-line mb-8">
+                    Pertanyaan akan muncul di sini...
+                </h3>
+                
+                <div id="q-options" class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+                    <!-- Options injected via JS -->
+                </div>
+
+                <!-- Answer Reveal -->
+                <div id="answer-box" class="hidden bg-green-50 border-l-4 border-green-500 p-4 rounded-r-lg mb-8">
+                    <p class="text-sm text-green-700 font-bold mb-1 uppercase">Jawaban Benar:</p>
+                    <p id="a-text" class="text-xl font-bold text-slate-800"></p>
+                </div>
+            </div>
+
+            <!-- Bottom Controls -->
+            <div class="flex flex-col md:flex-row justify-between items-center mt-auto gap-4 pt-6 border-t border-slate-100">
+                <button onclick="prevQuestion()" class="px-6 py-3 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold transition flex items-center gap-2">
+                    <i class="fas fa-arrow-left"></i> Sebelumnya
+                </button>
+                
+                <button id="btn-reveal" onclick="revealAnswer()" class="px-8 py-3 rounded-xl bg-indigo-500 hover:bg-indigo-600 text-white font-bold shadow-lg shadow-indigo-200 transition flex items-center gap-2">
+                    <i class="fas fa-eye"></i> Tampilkan Jawaban
+                </button>
+
+                <button onclick="nextQuestion()" class="px-6 py-3 rounded-xl bg-teal-500 hover:bg-teal-600 text-white font-bold shadow-lg shadow-teal-200 transition flex items-center gap-2">
+                    Selanjutnya <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        // --- DATA SOAL LENGKAP ---
+        const quizData = [
+            {
+                gradeName: "Final Akhir",
+                rounds: [
+                    {
+                        roundName: "Babak Penyisihan",
+                        questions: [
+                            { team: "A", q: "(Ejaan) Perhatikan kalimat berikut: \"adik membeli obat di apotik.\"\n\nManakah penulisan kata yang tidak baku pada kalimat tersebut dan apa perbaikannya?", o: [], a: "Kata apotik tidak baku, perbaikannya adalah apotek." },
+                            { team: "A", q: "(Kosakata) Apa arti kata evakuasi dalam Kamus Besar Bahasa Indonesia (KBBI)?", o: [], a: "Pengungsian atau penyelamatan penduduk dari tempat yang berbahaya." },
+                            { team: "A", q: "(Peribahasa) Apa arti dari peribahasa \"Bagai air di daun talas\"?", o: [], a: "Orang yang pendiriannya tidak tetap atau selalu berubah-ubah." },
+                            { team: "A", q: "(Sastra) Cerita fiksi pendek yang biasanya menceritakan tentang kehidupan hewan dan berpesan moral disebut...", o: [], a: "Fabel." },
+                            { team: "A", q: "(Sejarah Bahasa Indonesia) Pada tanggal berapakah Sumpah Pemuda diikrarkan, di mana salah satu butirnya menyatakan menjunjung bahasa persatuan, bahasa Indonesia?", o: [], a: "28 Oktober 1928." },
+                            { team: "B", q: "(Ejaan) Tuliskan bentuk baku dari kata tidak baku jadual!", o: [], a: "Jadwal." },
+                            { team: "B", q: "(Kosakata) Lawan kata (antonim) dari kata canggih adalah...", o: [], a: "Kuno / tertinggal / sederhana." },
+                            { team: "B", q: "(Peribahasa) Apa arti dari peribahasa \"Besar pasak daripada tiang\"?", o: [], a: "Besar pengeluaran daripada pendapatan (lebih besar pasak daripada tiang)." },
+                            { team: "B", q: "(Sastra) Karya sastra terikat yang bahasanya indah, terikat oleh baris, bait, serta rima disebut...", o: [], a: "Puisi (atau Syair / Pantun)." },
+                            { team: "B", q: "(Sejarah Bahasa Indonesia) Bahasa Indonesia lahir dan bersumber dari bahasa...", o: [], a: "Bahasa Melayu." },
+                            { team: "C", q: "(Ejaan) Perbaiki penulisan kata bergaris bawah berikut:\n\n\"Ayah pergi ke kantor menggunakan bis.\"", o: [], a: "Bus." },
+                            { team: "C", q: "(Kosakata) Persamaan kata (sinonim) dari kata haus adalah...", o: [], a: "Dahaga." },
+                            { team: "C", q: "(Peribahasa) \"Sedia payung sebelum hujan\" memiliki arti...", o: [], a: "Berjaga-jaga atau bersiap diri sebelum terjadi sesuatu yang buruk." },
+                            { team: "C", q: "(Sastra) Tokoh dalam cerita yang berperan sebagai penentang atau musuh dari tokoh utama disebut tokoh...", o: [], a: "Antagonis." },
+                            { team: "C", q: "(Sejarah Bahasa Indonesia) Pada tahun berapakah Ejaan Yang Disempurnakan (EYD) diresmikan penggunaannya di Indonesia?", o: [], a: "Tahun 1972." }
+                        ]
+                    },
+                    {
+                        roundName: "Babak Semifinal",
+                        questions: [
+                            { team: "A", q: "(Ejaan) Tuliskan penulisan gabungan kata yang benar untuk: se-tiap atau setiap?", o: [], a: "Setiap (ditulis serangkai)." },
+                            { team: "A", q: "(Kosakata) Apa arti istilah biodata?", o: [], a: "Keterangan mengenai riwayat hidup seseorang." },
+                            { team: "A", q: "(Peribahasa) \"Ada gula ada semut\" mengandung arti...", o: [], a: "Di mana ada kemakmuran atau keuntungan, di situlah banyak orang berkumpul." },
+                            { team: "A", q: "(Sastra) Dongeng yang menceritakan tentang asal-usul terjadinya suatu tempat atau benda disebut...", o: [], a: "Legenda." },
+                            { team: "A", q: "(Sejarah Bahasa Indonesia) Kongres Pemuda II yang melahirkan Sumpah Pemuda diselenggarakan di kota...", o: [], a: "Jakarta (Batavia)." },
+                            { team: "B", q: "(Ejaan) Betulkan penulisan kata berikut agar sesuai dengan kaidah baku:\n\nanalisa.", o: [], a: "Analisis." },
+                            { team: "B", q: "(Kosakata) Apa arti kata inovasi?", o: [], a: "Penemuan baru yang berbeda dari yang sudah ada sebelumnya." },
+                            { team: "B", q: "(Peribahasa) \"Bagai membandung air di hulu\" bermakna...", o: [], a: "Mengerjakan sesuatu yang sia-sia / perbuatan yang sukar dilakukan." },
+                            { team: "B", q: "(Sastra) Unsur intrinsik cerita yang menunjukkan tempat, waktu, dan suasana terjadinya peristiwa disebut...", o: [], a: "Latar (Setting)." },
+                            { team: "B", q: "(Sejarah Bahasa Indonesia) Pada tanggal 18 Agustus 1945, Undang-Undang Dasar 1945 disahkan. Pasal berapa di dalam UUD 1945 yang menetapkan bahwa \"Negara ialah Bahasa Indonesia\"?", o: [], a: "Pasal 36." },
+                            { team: "C", q: "(Ejaan) Manakah penulisan yang benar: kualitas atau kwalitas?", o: [], a: "Kualitas." },
+                            { team: "C", q: "(Kosakata) Sebutkan arti kata imigrasi!", o: [], a: "Perpindahan penduduk dari suatu negara ke negara lain untuk menetap." },
+                            { team: "C", q: "(Peribahasa) \"Air tenang menghanyutkan\" memiliki arti...", o: [], a: "Orang pendiam biasanya memiliki banyak pengetahuan atau berbahaya/cerdas tersembunyi." },
+                            { team: "C", q: "(Sastra) Pesan moral yang ingin disampaikan pengarang melalui sebuah cerita disebut...", o: [], a: "Amanat." },
+                            { team: "C", q: "(Sejarah Bahasa Indonesia) Kongres Bahasa Indonesia yang pertama kali diselenggarakan di kota... pada tahun 1938.", o: [], a: "Solo (Surakarta)." }
+                        ]
+                    },
+                    {
+                        roundName: "Babak Final Rebutan",
+                        questions: [
+                            { team: "Rebutan", q: "(Ejaan) Betulkan kesalahan ejaan pada kalimat berikut:\n\n\"Para bapak-bapak sedang kerja bakti di desa.\"", o: [], a: "Bapak-bapak sedang kerja bakti di desa ATAU Para bapak sedang kerja bakti di desa (tidak boleh menggabungkan kata \"para\" dan pengulangan \"bapak-bapak\" sekaligus)." },
+                            { team: "Rebutan", q: "(Kosakata) Apa arti dari kata serapan interaksi?", o: [], a: "Hal melakukan aksi timbal balik / hubungan / saling mempengaruhi." },
+                            { team: "Rebutan", q: "(Peribahasa) Sebutkan peribahasa yang bermakna \"rajin dan tekun belajar atau bekerja pasti akan membuahkan hasil/kesuksesan\".", o: [], a: "\"Sedikit demi sedikit, lama-lama menjadi bukit\" atau \"Berakit-rakit ke hulu, berenang-renang ke tepian\"." },
+                            { team: "Rebutan", q: "(Sastra) Puisi lama rakyat yang terdiri atas 4 baris setiap bait, bersajak a-b-a-b, dan baris pertama serta kedua adalah sampiran disebut...", o: [], a: "Pantun." },
+                            { team: "Rebutan", q: "(Sejarah Bahasa Indonesia) Pada masa penjajahan Jepang, dibentuk sebuah komisi penyusun istilah bahasa Indonesia yang dipimpin oleh tokoh nasional bernama...", o: [], a: "Ir. Soekarno (atau Mohammad Hatta / Sutan Takdir Alisjahbana)." }
+                        ]
+                    }
+                ]
+            }
+        ];
+
+        // --- STATE VARIABLES ---
+        let currentGrade = 0;
+        let currentRound = 0;
+        let currentQIndex = 0;
+        
+        let scores = { A: 0, B: 0, C: 0 };
+        
+        let timerInterval = null;
+        let timeLeft = 10;
+        let isTimerRunning = false;
+
+        // --- AUDIO SYNTHS ---
+        let tickSynth, alarmSynth;
+
+        function initGame() {
+            // Setup Audio Synths
+            tickSynth = new Tone.Synth().toDestination();
+            alarmSynth = new Tone.Synth({
+                oscillator: { type: "square" },
+                envelope: { attack: 0.1, decay: 0.2, sustain: 1, release: 0.5 }
+            }).toDestination();
+            
+            Tone.start();
+            
+            document.getElementById('start-screen').style.display = 'none';
+            const app = document.getElementById('main-app');
+            app.classList.remove('opacity-0');
+            app.classList.add('opacity-100');
+
+            loadQuestion();
+        }
+
+        // --- RENDER LOGIC ---
+        function loadQuestion() {
+            stopTimer();
+            document.getElementById('answer-box').classList.add('hidden');
+            document.getElementById('btn-reveal').disabled = false;
+            
+            const gradeData = quizData[currentGrade];
+            const roundData = gradeData.rounds[currentRound];
+            
+            // Check boundaries
+            if (currentQIndex < 0) currentQIndex = 0;
+            if (currentQIndex >= roundData.questions.length) {
+                currentQIndex = roundData.questions.length - 1;
+                showModal("Informasi", "Ini adalah soal terakhir di babak ini.");
+                return;
+            }
+
+            const qData = roundData.questions[currentQIndex];
+
+            // Update Header selects if needed
+            document.getElementById('grade-select').value = currentGrade;
+            document.getElementById('round-select').value = currentRound;
+
+            // Update UI elements
+            document.getElementById('q-number').innerText = `Soal ${currentQIndex + 1} / ${roundData.questions.length}`;
+            document.getElementById('q-text').innerText = qData.q;
+            document.getElementById('a-text').innerText = qData.a;
+            
+            // Update Options
+            const optionsContainer = document.getElementById('q-options');
+            optionsContainer.innerHTML = '';
+            if (qData.o && qData.o.length > 0) {
+                qData.o.forEach(opt => {
+                    const div = document.createElement('div');
+                    div.className = "bg-slate-50 border border-slate-200 p-4 rounded-xl text-lg text-slate-700 shadow-sm";
+                    div.innerText = opt;
+                    optionsContainer.appendChild(div);
+                });
+            } else {
+                const div = document.createElement('div');
+                div.className = "bg-indigo-50 border border-indigo-200 p-4 rounded-xl text-lg text-indigo-800 shadow-sm col-span-1 md:col-span-2 text-center font-semibold italic";
+                div.innerText = "(Soal Isian / Uraian)";
+                optionsContainer.appendChild(div);
+            }
+
+            // Update Turn Badge & Card Border
+            const badge = document.getElementById('turn-badge');
+            const card = document.getElementById('question-card');
+            
+            // Remove previous theme classes
+            badge.className = "px-6 py-2 rounded-full font-bold text-lg shadow-sm";
+            card.className = "flex-1 bg-white rounded-3xl shadow-xl p-6 md:p-10 border-t-8 flex flex-col";
+            
+            if (qData.team === 'A') {
+                badge.classList.add('bg-team-A');
+                badge.innerText = "Giliran: REGU A (HITAM)";
+                card.classList.add('team-A');
+            } else if (qData.team === 'B') {
+                badge.classList.add('bg-team-B');
+                badge.innerText = "Giliran: REGU B (MERAH)";
+                card.classList.add('team-B');
+            } else if (qData.team === 'C') {
+                badge.classList.add('bg-team-C');
+                badge.innerText = "Giliran: REGU C (HIJAU)";
+                card.classList.add('team-C');
+            } else {
+                badge.classList.add('bg-team-Rebutan');
+                badge.innerText = "BABAK REBUTAN (Semua Regu)";
+                card.classList.add('team-Rebutan');
+            }
+        }
+
+        // --- NAVIGATION ---
+        function changeGrade(idx) {
+            currentGrade = parseInt(idx);
+            currentRound = 0;
+            currentQIndex = 0;
+            resetScores();
+            loadQuestion();
+        }
+
+        function changeRound(idx) {
+            currentRound = parseInt(idx);
+            currentQIndex = 0;
+            loadQuestion();
+        }
+
+        function nextQuestion() {
+            const roundData = quizData[currentGrade].rounds[currentRound];
+            if (currentQIndex < roundData.questions.length - 1) {
+                currentQIndex++;
+                loadQuestion();
+            } else {
+                showModal("Babak Selesai", "Silahkan pindah ke babak selanjutnya lewat menu di atas.");
+            }
+        }
+
+        function prevQuestion() {
+            if (currentQIndex > 0) {
+                currentQIndex--;
+                loadQuestion();
+            }
+        }
+
+        function revealAnswer() {
+            stopTimer();
+            document.getElementById('answer-box').classList.remove('hidden');
+        }
+
+        // --- SCORING LOGIC ---
+        function updateScore(team, amount) {
+            scores[team] += amount;
+            document.getElementById(`score-${team}`).innerText = scores[team];
+        }
+
+        function resetScores() {
+            scores = { A: 0, B: 0, C: 0 };
+            document.getElementById('score-A').innerText = "0";
+            document.getElementById('score-B').innerText = "0";
+            document.getElementById('score-C').innerText = "0";
+        }
+
+        // --- TIMER LOGIC ---
+        function toggleTimer() {
+            if (isTimerRunning) {
+                stopTimer();
+            } else {
+                startTimer();
+            }
+        }
+
+        function startTimer() {
+            timeLeft = 10;
+            isTimerRunning = true;
+            document.getElementById('timer-display').innerText = timeLeft;
+            document.getElementById('timer-display').classList.add('pulse-fast');
+            document.getElementById('icon-timer').classList.replace('fa-play', 'fa-stop');
+            document.getElementById('btn-timer').classList.replace('bg-teal-500', 'bg-red-500');
+            document.getElementById('btn-timer').classList.replace('hover:bg-teal-600', 'hover:bg-red-600');
+
+            timerInterval = setInterval(() => {
+                timeLeft--;
+                document.getElementById('timer-display').innerText = timeLeft;
+                
+                if (timeLeft > 0) {
+                    if (tickSynth) tickSynth.triggerAttackRelease("C6", "32n");
+                } else {
+                    stopTimer();
+                    if (alarmSynth) alarmSynth.triggerAttackRelease("C3", "0.5");
+                    showModal("Waktu Habis!", "Waktu untuk menjawab telah habis.");
+                }
+            }, 1000);
+        }
+
+        function stopTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            document.getElementById('timer-display').classList.remove('pulse-fast');
+            document.getElementById('timer-display').innerText = timeLeft > 0 ? timeLeft : "0";
+            document.getElementById('icon-timer').classList.replace('fa-stop', 'fa-play');
+            document.getElementById('btn-timer').classList.replace('bg-red-500', 'bg-teal-500');
+            document.getElementById('btn-timer').classList.replace('hover:bg-red-600', 'hover:bg-teal-600');
+        }
+
+        // --- MODAL LOGIC ---
+        function showModal(title, message) {
+            document.getElementById('alert-title').innerText = title;
+            document.getElementById('alert-message').innerText = message;
+            
+            if (title === "Waktu Habis!") {
+                document.getElementById('alert-icon').innerHTML = '<i class="fas fa-hourglass-end"></i>';
+                document.getElementById('alert-icon').className = "text-5xl mb-4 text-red-500";
+            } else {
+                document.getElementById('alert-icon').innerHTML = '<i class="fas fa-info-circle"></i>';
+                document.getElementById('alert-icon').className = "text-5xl mb-4 text-blue-500";
+            }
+
+            const modal = document.getElementById('alert-modal');
+            const box = document.getElementById('alert-box');
+            modal.classList.remove('hidden');
+            box.classList.add('modal-enter');
+        }
+
+        function closeAlert() {
+            document.getElementById('alert-modal').classList.add('hidden');
+            document.getElementById('alert-box').classList.remove('modal-enter');
+        }
+    </script>
+</body>
+</html>
